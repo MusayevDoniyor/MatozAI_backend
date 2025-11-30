@@ -10,14 +10,44 @@ import { CreateSessionDto } from "./dto/create-session.dto";
 import { UpdateSessionDto } from "./dto/update-session.dto";
 import { QuerySessionsDto } from "./dto/query-sessions.dto";
 
+import { ConfigService } from "@nestjs/config";
+
 @Injectable()
 export class SessionsService {
   private readonly logger = new Logger(SessionsService.name);
+  private readonly backendUrl: string;
 
   constructor(
     private prisma: PrismaService,
-    private storageService: StorageService
-  ) {}
+    private storageService: StorageService,
+    private configService: ConfigService
+  ) {
+    const port = this.configService.get<string>("PORT") || "3001";
+    // Use Render URL if available, otherwise localhost
+    const renderUrl = process.env.RENDER_EXTERNAL_URL;
+    this.backendUrl = renderUrl || `http://localhost:${port}`;
+    this.logger.log(`Backend URL set to: ${this.backendUrl}`);
+  }
+
+  private transformSession(session: any) {
+    if (!session) return null;
+
+    // Debug log
+    // this.logger.debug(`Transforming session ${session.id}, audioUrl: ${session.audioUrl}`);
+
+    // If audioUrl exists and doesn't start with http, prepend backend URL
+    if (session.audioUrl && !session.audioUrl.startsWith("http")) {
+      const fullUrl = `${this.backendUrl}/sessions/${session.id}/audio`;
+      // this.logger.debug(`Transformed URL: ${fullUrl}`);
+
+      return {
+        ...session,
+        audioUrl: fullUrl,
+      };
+    }
+
+    return session;
+  }
 
   async create(
     userId: number,
@@ -71,11 +101,11 @@ export class SessionsService {
 
         this.logger.log(`Session ${session.id} updated with audio info`);
 
-        return {
+        return this.transformSession({
           ...session,
           audioUrl,
           audioSize,
-        };
+        });
       } catch (error) {
         this.logger.error(
           `Failed to upload audio for session ${session.id}:`,
@@ -86,7 +116,7 @@ export class SessionsService {
     }
 
     this.logger.log(`Session ${session.id} created without audio`);
-    return session;
+    return this.transformSession(session);
   }
 
   async findAll(userId: number, query: QuerySessionsDto) {
@@ -112,7 +142,7 @@ export class SessionsService {
     );
 
     return {
-      data: sessions,
+      data: sessions.map((session) => this.transformSession(session)),
       meta: {
         total,
         page,
@@ -142,7 +172,7 @@ export class SessionsService {
     }
 
     this.logger.log(`Session ${id} retrieved successfully`);
-    return session;
+    return this.transformSession(session);
   }
 
   async update(userId: number, id: string, updateSessionDto: UpdateSessionDto) {
@@ -156,11 +186,22 @@ export class SessionsService {
     });
 
     this.logger.log(`Session ${id} updated successfully`);
-    return updated;
+    return this.transformSession(updated);
   }
 
   async remove(userId: number, id: string) {
-    const session = await this.findOne(userId, id);
+    // Get raw session directly from database to avoid URL transformation
+    const session = await this.prisma.session.findUnique({
+      where: { id },
+    });
+
+    if (!session) {
+      throw new NotFoundException("Session not found");
+    }
+
+    if (session.userId !== userId) {
+      throw new ForbiddenException("Access denied");
+    }
 
     this.logger.log(`Deleting session ${id}`);
 
@@ -187,7 +228,20 @@ export class SessionsService {
   }
 
   async getAudio(userId: number, id: string) {
-    const session = await this.findOne(userId, id);
+    // Get raw session directly from database to avoid URL transformation
+    const session = await this.prisma.session.findUnique({
+      where: { id },
+    });
+
+    if (!session) {
+      this.logger.warn(`Session ${id} not found`);
+      throw new NotFoundException("Session not found");
+    }
+
+    if (session.userId !== userId) {
+      this.logger.warn(`User ${userId} attempted to access session ${id}`);
+      throw new ForbiddenException("Access denied");
+    }
 
     if (!session.audioUrl) {
       this.logger.warn(`Session ${id} has no audio file`);
