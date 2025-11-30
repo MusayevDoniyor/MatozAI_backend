@@ -13,7 +13,7 @@ import { ConfigService } from "@nestjs/config";
 
 @WebSocketGateway({
   cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
     credentials: true,
   },
   namespace: "/ws",

@@ -6,12 +6,14 @@ import {
   IsOptional,
   IsIn,
 } from "class-validator";
+import { Type } from "class-transformer";
 
 export class CreateSessionDto {
   @IsString()
   @IsNotEmpty()
   text: string;
 
+  @Type(() => Number)
   @IsNumber()
   @Min(0)
   duration: number;
