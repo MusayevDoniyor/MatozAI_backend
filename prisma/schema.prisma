@@ -1,0 +1,59 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+model User {
+  id            Int       @id @default(autoincrement())
+  email         String    @unique
+  name          String?
+  password      String
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sessions      Session[]
+  refreshTokens RefreshToken[]
+
+  @@map("users")
+}
+
+model Session {
+  id            String    @id @default(uuid())
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  text          String    @db.Text
+  audioUrl      String?
+  audioSize     Int?
+  duration      Float     @default(0)
+
+  script        String    @default("lat")
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, createdAt])
+  @@map("sessions")
+}
+
+model RefreshToken {
+  id            String    @id @default(uuid())
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token         String    @unique
+  expiresAt     DateTime
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
