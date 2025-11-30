@@ -6,11 +6,28 @@ import { AppModule } from "./app.module";
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Enable CORS
+  // Enable CORS for multiple origins
+  const allowedOrigins = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "https://matoz-ai.vercel.app",
+    process.env.FRONTEND_URL,
+  ].filter(Boolean);
+
   app.enableCors({
-    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.some((allowed) => origin.startsWith(allowed))) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Allow all for now, you can restrict later
+      }
+    },
     credentials: true,
-    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS", "PUT"],
+    allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   });
 
   // Global validation pipe

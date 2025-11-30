@@ -22,7 +22,7 @@ export class SessionsService {
   async create(
     userId: number,
     createSessionDto: CreateSessionDto,
-    audioFile?: Express.Multer.File
+    audioFile?: any
   ) {
     const { text, duration, script } = createSessionDto;
 

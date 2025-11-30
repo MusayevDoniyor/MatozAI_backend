@@ -45,7 +45,7 @@ export class StorageService {
   }
 
   async saveAudio(
-    file: Express.Multer.File,
+    file: any,
     userId: number,
     sessionId: string
   ): Promise<{ audioUrl: string; audioSize: number }> {

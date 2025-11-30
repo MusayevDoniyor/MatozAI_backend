@@ -16,6 +16,7 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Response } from "express";
+import type { Multer } from "multer";
 import { SessionsService } from "./sessions.service";
 import { CreateSessionDto } from "./dto/create-session.dto";
 import { UpdateSessionDto } from "./dto/update-session.dto";
@@ -32,7 +33,7 @@ export class SessionsController {
   async create(
     @Request() req,
     @Body() createSessionDto: CreateSessionDto,
-    @UploadedFile() file?: Express.Multer.File
+    @UploadedFile() file?: any
   ) {
     return this.sessionsService.create(req.user.id, createSessionDto, file);
   }
