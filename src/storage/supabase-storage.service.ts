@@ -1,9 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
 @Injectable()
 export class SupabaseStorageService {
+  private readonly logger = new Logger(SupabaseStorageService.name);
   private supabase: SupabaseClient;
   private bucketName: string;
 
@@ -18,6 +19,11 @@ export class SupabaseStorageService {
 
     if (supabaseUrl && supabaseKey) {
       this.supabase = createClient(supabaseUrl, supabaseKey);
+      this.logger.log(
+        `Supabase Storage initialized: bucket=${this.bucketName}`
+      );
+    } else {
+      this.logger.warn("Supabase credentials not configured");
     }
   }
 
@@ -29,6 +35,8 @@ export class SupabaseStorageService {
     const ext = file.originalname.split(".").pop() || "webm";
     const filename = `${userId}/${sessionId}.${ext}`;
 
+    this.logger.log(`Uploading to Supabase: ${filename}, size=${file.size}`);
+
     const { data, error } = await this.supabase.storage
       .from(this.bucketName)
       .upload(filename, file.buffer, {
@@ -37,13 +45,18 @@ export class SupabaseStorageService {
       });
 
     if (error) {
+      this.logger.error(`Supabase upload error for ${filename}:`, error);
       throw new Error(`Failed to upload file: ${error.message}`);
     }
+
+    this.logger.debug(`Upload response:`, data);
 
     // Get public URL
     const { data: urlData } = this.supabase.storage
       .from(this.bucketName)
       .getPublicUrl(filename);
+
+    this.logger.log(`Public URL generated: ${urlData.publicUrl}`);
 
     return {
       audioUrl: urlData.publicUrl,
@@ -55,27 +68,37 @@ export class SupabaseStorageService {
     // Extract path from URL
     const path = this.extractPathFromUrl(audioUrl);
 
+    this.logger.log(`Downloading from Supabase: ${path}`);
+
     const { data, error } = await this.supabase.storage
       .from(this.bucketName)
       .download(path);
 
     if (error) {
+      this.logger.error(`Supabase download error for ${path}:`, error);
       throw new Error(`Failed to download file: ${error.message}`);
     }
 
     const arrayBuffer = await data.arrayBuffer();
-    return Buffer.from(arrayBuffer);
+    const buffer = Buffer.from(arrayBuffer);
+
+    this.logger.log(`Downloaded ${buffer.length} bytes from Supabase`);
+    return buffer;
   }
 
   async deleteAudio(audioUrl: string): Promise<void> {
     const path = this.extractPathFromUrl(audioUrl);
+
+    this.logger.log(`Deleting from Supabase: ${path}`);
 
     const { error } = await this.supabase.storage
       .from(this.bucketName)
       .remove([path]);
 
     if (error) {
-      console.error(`Failed to delete file: ${error.message}`);
+      this.logger.error(`Supabase delete error for ${path}:`, error);
+    } else {
+      this.logger.log(`Deleted successfully: ${path}`);
     }
   }
 
@@ -89,6 +112,7 @@ export class SupabaseStorageService {
       });
 
     if (error || !data || data.length === 0) {
+      this.logger.warn(`Could not get file size for ${path}`);
       return 0;
     }
 
@@ -98,12 +122,16 @@ export class SupabaseStorageService {
   private extractPathFromUrl(url: string): string {
     // If it's already a path, return it
     if (!url.startsWith("http")) {
+      this.logger.debug(`URL is already a path: ${url}`);
       return url;
     }
 
     // Extract path from Supabase URL
     // Format: https://[project].supabase.co/storage/v1/object/public/[bucket]/[path]
     const parts = url.split(`${this.bucketName}/`);
-    return parts[1] || url;
+    const extractedPath = parts[1] || url;
+
+    this.logger.debug(`Extracted path from URL: ${url} -> ${extractedPath}`);
+    return extractedPath;
   }
 }

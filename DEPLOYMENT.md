@@ -1,147 +1,177 @@
-# MatozAI Backend - Production Deployment
+# Production Deployment - Quick Guide
 
-## Tezkor Boshlash
+## ⚠️ MUHIM: `.env` sozlamalari
 
-### 1. Supabase Sozlash
+Production ga deploy qilishdan oldin `.env` faylida quyidagilarni tekshiring:
 
-1. **Supabase account yarating**: https://supabase.com
-2. **Yangi project yarating**
-3. **Database URL ni oling**:
-
-   - Settings → Database → Connection String (URI)
-   - Parolni saqlang!
-
-4. **Storage bucket yarating**:
-
-   - Storage → New bucket → `matozai-audio` (public)
-
-5. **API keys ni oling**:
-   - Settings → API
-   - Project URL, anon key, service_role key ni nusxalang
-
-### 2. Environment Variables
-
-`.env.production.example` faylini `.env.production` ga nusxalang:
-
-```bash
-cp .env.production.example .env.production
-```
-
-Quyidagi qiymatlarni to'ldiring:
+### 1. Database (Supabase)
 
 ```env
-DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@db.YOUR_REF.supabase.co:5432/postgres"
-JWT_SECRET="$(openssl rand -base64 32)"
-FRONTEND_URL="https://your-frontend.vercel.app"
-SUPABASE_URL="https://YOUR_REF.supabase.co"
-SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@db.tllnzneahvtdslwnbcki.supabase.co:5432/postgres"
 ```
 
-### 3. Database Migration
+⚠️ **Parolda `/` yoki maxsus belgilar bo'lmasligi kerak!**
 
-```bash
-# Prisma client generate
-npm run prisma:generate
+Agar parolda muammo bo'lsa:
 
-# Production migration
-npm run prisma:deploy
-```
+1. Supabase Dashboard → Settings → Database
+2. "Reset Database Password"
+3. Yangi oddiy parol yarating (faqat harflar va raqamlar)
 
-### 4. Local Production Test
+### 2. Storage Type
 
-```bash
-# Build
-npm run build
-
-# Run production mode
-NODE_ENV=production npm run start:prod
-```
-
-Test qiling:
-
-```bash
-curl http://localhost:3001/health
-```
-
-### 5. Deploy (Render.com)
-
-1. **Render.com** ga o'ting: https://render.com
-2. **New → Web Service**
-3. **GitHub repository** ni ulang
-4. **Sozlamalar**:
-
-   - Name: `matozai-backend`
-   - Environment: `Node`
-   - Build Command: `npm install && npx prisma generate && npm run build`
-   - Start Command: `npm run start:prod`
-
-5. **Environment Variables** qo'shing (`.env.production` dan):
-
-   - `NODE_ENV=production`
-   - `DATABASE_URL=...`
-   - `JWT_SECRET=...`
-   - `FRONTEND_URL=...`
-   - `SUPABASE_URL=...`
-   - `SUPABASE_SERVICE_ROLE_KEY=...`
-   - `SUPABASE_STORAGE_BUCKET=matozai-audio`
-   - `STORAGE_TYPE=supabase`
-
-6. **Create Web Service**
-
-### 6. Post-Deployment
-
-Backend URL ni oling (masalan: `https://matozai-backend.onrender.com`)
-
-Test qiling:
-
-```bash
-curl https://matozai-backend.onrender.com/health
-```
-
-API docs:
-
-```
-https://matozai-backend.onrender.com/api/docs
-```
-
-### 7. Frontend ni yangilash
-
-Frontend `.env` fayliga backend URL ni qo'shing:
+**Local storage (hozircha):**
 
 ```env
-VITE_API_URL=https://matozai-backend.onrender.com
+STORAGE_TYPE=local
+UPLOAD_DIR=./uploads
 ```
 
----
+**Supabase Storage (kelajakda):**
 
-## Troubleshooting
+```env
+STORAGE_TYPE=supabase
+SUPABASE_URL=https://tllnzneahvtdslwnbcki.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+SUPABASE_STORAGE_BUCKET=matozai-audio
+```
+
+### 3. JWT Secret
+
+Kuchli secret yarating:
+
+```bash
+openssl rand -base64 32
+```
+
+Natijani `.env` ga qo'ying:
+
+```env
+JWT_SECRET=GENERATED_RANDOM_STRING_HERE
+```
+
+### 4. CORS
+
+Frontend URL ni to'g'ri kiriting:
+
+```env
+FRONTEND_URL=https://matoz-ai.vercel.app
+```
+
+⚠️ **Oxirida `/` bo'lmasin!**
+
+### 5. Port
+
+```env
+PORT=7070
+```
+
+Yoki Render default portini ishlating (PORT environment variable Render tomonidan avtomatik beriladi).
+
+## 🚀 Render.com Deploy
+
+### Build Command:
+
+```
+npm install && npm run build
+```
+
+### Start Command:
+
+```
+npm run start:prod
+```
+
+### Environment Variables (Render Dashboard):
+
+Render.com da quyidagi environment variables ni qo'shing:
+
+```
+NODE_ENV=production
+DATABASE_URL=postgresql://postgres:YOUR_PASSWORD@db.tllnzneahvtdslwnbcki.supabase.co:5432/postgres
+JWT_SECRET=YOUR_GENERATED_SECRET
+JWT_ACCESS_EXPIRY=6h
+JWT_REFRESH_EXPIRY=14d
+FRONTEND_URL=https://matoz-ai.vercel.app
+STORAGE_TYPE=local
+UPLOAD_DIR=./uploads
+MAX_FILE_SIZE=52428800
+LOG_LEVEL=info
+```
+
+⚠️ **PORT ni qo'shMANG** - Render avtomatik beradi!
+
+## ✅ Deploy Checklist
+
+- [ ] Supabase database parolini tekshirish/yangilash
+- [ ] JWT_SECRET yaratish (`openssl rand -base64 32`)
+- [ ] FRONTEND_URL to'g'ri (slash siz)
+- [ ] STORAGE_TYPE=local (hozircha)
+- [ ] Render.com da environment variables qo'shish
+- [ ] Build command: `npm install && npm run build`
+- [ ] Start command: `npm run start:prod`
+- [ ] Deploy!
+
+## 🔍 Post-Deploy Test
+
+Deploy bo'lgandan keyin:
+
+```bash
+# Health check
+curl https://your-backend.onrender.com/health
+
+# Expected response:
+{
+  "status": "ok",
+  "database": "connected",
+  "uptime": 123.45,
+  "timestamp": "2025-12-01T..."
+}
+```
+
+## 📝 Logs
+
+Render Dashboard → Logs tab da real-time logs ko'ring.
+
+Qidiruv uchun:
+
+- `[SessionsService]` - Session operations
+- `[StorageService]` - File upload/download
+- `[ERROR]` - Xatolar
+
+## 🔄 Supabase Storage ga o'tish (kelajakda)
+
+1. Supabase Dashboard → Storage
+2. Bucket yaratish: `matozai-audio` (public)
+3. Service Role Key olish
+4. `.env` da `STORAGE_TYPE=supabase` qilish
+5. Supabase keys qo'shish
+6. Redeploy
+
+## ⚡ Troubleshooting
+
+### Build fails: "Cannot find namespace Express"
+
+✅ **Hal qilindi**: `@types/multer` package.json da bor.
 
 ### Database connection error
 
-- Supabase parol to'g'riligini tekshiring
-- `DATABASE_URL` format to'g'riligini tekshiring
+- Parolni tekshiring
+- Supabase da database running ekanligini tekshiring
+- `DATABASE_URL` formatini tekshiring
 
-### Storage upload fails
+### Audio upload fails
 
-- `STORAGE_TYPE=supabase` ekanligini tekshiring
-- Service role key to'g'riligini tekshiring
-- Supabase bucket `matozai-audio` yaratilganligini tekshiring
+- `STORAGE_TYPE=local` ekanligini tekshiring
+- `UPLOAD_DIR=./uploads` to'g'riligini tekshiring
+- Render da disk space borligini tekshiring
 
 ### CORS errors
 
-- `FRONTEND_URL` to'g'ri domain ekanligini tekshiring
+- `FRONTEND_URL` to'g'ri ekanligini tekshiring
+- Slash yo'qligini tekshiring
 - Frontend va backend bir xil protocol (https) ishlatayotganini tekshiring
 
 ---
 
-## Monitoring
-
-- **Render Dashboard**: Logs va metrics
-- **Supabase Dashboard**: Database va storage
-- **Health endpoint**: `/health`
-
----
-
-## Qo'shimcha Ma'lumot
-
-To'liq setup guide: `SUPABASE_SETUP.md`
+**Tayyor!** Deploy qiling va test qiling! 🚀

@@ -59,10 +59,17 @@ export class SessionsController {
     @Res() res: Response
   ) {
     const audioBuffer = await this.sessionsService.getAudio(req.user.id, id);
+
     res.set({
       "Content-Type": "audio/webm",
-      "Content-Length": audioBuffer.length,
+      "Content-Length": audioBuffer.length.toString(),
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "public, max-age=31536000",
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization",
     });
+
     res.send(audioBuffer);
   }
 
