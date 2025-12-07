@@ -47,7 +47,7 @@ export class AuthController {
     const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
 
     res.redirect(
-      `${frontendUrl}/api/auth/callback/google?accessToken=${accessToken}&refreshToken=${refreshToken}`
+      `${frontendUrl}/auth/callback/google?accessToken=${accessToken}&refreshToken=${refreshToken}`
     );
   }
 
