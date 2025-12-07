@@ -15,7 +15,7 @@ import { ConfigService } from "@nestjs/config";
   cors: {
     origin: [
       "http://localhost:3000",
-      "http://localhost:5173",
+      "http://localhost:7070",
       "https://matoz-ai.vercel.app",
       process.env.FRONTEND_URL,
     ].filter(Boolean),

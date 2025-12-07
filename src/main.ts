@@ -9,7 +9,7 @@ async function bootstrap() {
   // Enable CORS for multiple origins
   const allowedOrigins = [
     "http://localhost:3000",
-    "http://localhost:5173",
+    "http://localhost:7070",
     "https://matoz-ai.vercel.app",
     process.env.FRONTEND_URL,
   ].filter(Boolean);
@@ -29,6 +29,9 @@ async function bootstrap() {
     methods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS", "PUT"],
     allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   });
+
+  // Global prefix
+  app.setGlobalPrefix("api");
 
   // Global validation pipe
   app.useGlobalPipes(
