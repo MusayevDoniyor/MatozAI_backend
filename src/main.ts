@@ -30,6 +30,10 @@ async function bootstrap() {
     allowedHeaders: ["Content-Type", "Authorization", "Accept"],
   });
 
+  // Set max body size to 40MB
+  app.use(require("body-parser").json({ limit: "40mb" }));
+  app.use(require("body-parser").urlencoded({ limit: "40mb", extended: true }));
+
   // Global validation pipe
   app.useGlobalPipes(
     new ValidationPipe({
