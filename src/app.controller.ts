@@ -5,6 +5,16 @@ import { PrismaService } from "./prisma/prisma.service";
 export class AppController {
   constructor(private prisma: PrismaService) {}
 
+  @Get()
+  getHello() {
+    return {
+      name: "MatozAI Backend",
+      version: "1.0.0",
+      status: "running",
+      docs: "/api/docs",
+    };
+  }
+
   @Get("health")
   async getHealth() {
     try {
