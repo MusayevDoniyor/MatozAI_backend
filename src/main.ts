@@ -1,7 +1,9 @@
-import { NestFactory } from "@nestjs/core";
+import { HttpAdapterHost, NestFactory } from "@nestjs/core";
 import { ValidationPipe } from "@nestjs/common";
 import { SwaggerModule, DocumentBuilder } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
+import { LoggingInterceptor } from "./common/interceptors/logging.interceptor";
+import { AllExceptionsFilter } from "./common/filters/all-exceptions.filter";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -22,7 +24,7 @@ async function bootstrap() {
       if (allowedOrigins.some((allowed) => origin.startsWith(allowed))) {
         callback(null, true);
       } else {
-        callback(null, true); // Allow all for now, you can restrict later
+        callback(null, true); // Allow all for now
       }
     },
     credentials: true,
@@ -42,6 +44,13 @@ async function bootstrap() {
       forbidNonWhitelisted: true,
     })
   );
+
+  // Global Logging Interceptor
+  app.useGlobalInterceptors(new LoggingInterceptor());
+
+  // Global Exception Filter
+  const httpAdapter = app.get(HttpAdapterHost);
+  app.useGlobalFilters(new AllExceptionsFilter(httpAdapter));
 
   // Swagger documentation
   const config = new DocumentBuilder()

@@ -29,6 +29,7 @@
     "@prisma/client": "^6.19.0",
     "@supabase/supabase-js": "^2.86.0",
     "@types/passport-google-oauth20": "^2.0.17",
+    "@types/uuid": "^10.0.0",
     "bcrypt": "^5.1.1",
     "body-parser": "^2.2.1",
     "class-transformer": "^0.5.1",
@@ -40,7 +41,8 @@
     "prisma": "^6.19.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "uuid": "^13.0.0"
   },
   "keywords": [],
   "author": "",
