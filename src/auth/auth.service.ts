@@ -6,6 +6,7 @@ import {
 import { JwtService } from "@nestjs/jwt";
 import { ConfigService } from "@nestjs/config";
 import { PrismaService } from "../prisma/prisma.service";
+import { OAuth2Client } from "google-auth-library";
 
 @Injectable()
 export class AuthService {
@@ -147,5 +148,96 @@ export class AuthService {
       },
       ...tokens,
     };
+  }
+
+  /**
+   * Mobile app uchun Google authentication
+   * Mobile app ID Token yuboradi, bu method uni verify qiladi
+   */
+  async googleMobileLogin(idToken: string, platform?: "android" | "ios") {
+    const client = new OAuth2Client(
+      this.configService.get<string>("GOOGLE_CLIENT_ID")
+    );
+
+    try {
+      // ID Token ni verify qilish
+      const ticket = await client.verifyIdToken({
+        idToken,
+        audience: [
+          this.configService.get<string>("GOOGLE_CLIENT_ID"),
+          // Mobile client ID larni ham qo'shish mumkin
+          this.configService.get<string>("GOOGLE_ANDROID_CLIENT_ID") || "",
+          this.configService.get<string>("GOOGLE_IOS_CLIENT_ID") || "",
+        ].filter(Boolean),
+      });
+
+      const payload = ticket.getPayload();
+
+      if (!payload) {
+        throw new UnauthorizedException("Invalid Google token");
+      }
+
+      const {
+        email,
+        given_name,
+        family_name,
+        sub: googleId,
+        picture,
+      } = payload;
+
+      if (!email) {
+        throw new BadRequestException("Email not provided by Google");
+      }
+
+      // Check if user exists
+      let user = await this.prisma.user.findUnique({
+        where: { email },
+      });
+
+      if (!user) {
+        // Create new user
+        user = await this.prisma.user.create({
+          data: {
+            email,
+            name:
+              `${given_name || ""} ${family_name || ""}`.trim() ||
+              email.split("@")[0],
+            googleId,
+          },
+        });
+      } else if (!user.googleId) {
+        // If user exists but doesn't have googleId, update it
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { googleId },
+        });
+      }
+
+      if (!user.isActive) {
+        throw new UnauthorizedException("Account is inactive");
+      }
+
+      // Generate tokens
+      const tokens = await this.generateTokens(user.id);
+
+      return {
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          createdAt: user.createdAt,
+          picture, // Profile picture from Google
+        },
+        ...tokens,
+      };
+    } catch (error) {
+      if (
+        error instanceof UnauthorizedException ||
+        error instanceof BadRequestException
+      ) {
+        throw error;
+      }
+      throw new UnauthorizedException("Failed to verify Google token");
+    }
   }
 }
